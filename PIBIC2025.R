@@ -24,7 +24,7 @@ library(dplyr)
 }
 
 #selecionado as variáveis
-varselec <-  c("UF","V2005","VD4002","V2010","V2009", "V2007","VD4016", 
+varselec <-  c("UF","V2005","VD4002","V2010","V2009", "V2007","VD4016", "VD4019", 
                "VD3005","V4040","V40401","V40402", "V40403", "V20082")
 
 # dicionário pnad
@@ -54,140 +54,140 @@ varselec <-  c("UF","V2005","VD4002","V2010","V2009", "V2007","VD4016",
 
 
 # baixando bases de dados de 2012 a 2024.3 ----------
-# Lista para armazenar os resultados
-pnadc_dados <- list()
+# Cria uma lista para armazenar os dados dos trimestres de 2012
+PNADC_trimestres <- list()
 
-# Loop para obter os dados de 2012 a 2024
-for (ano in 2012:2024) {
-  # Inicializa um data frame vazio para juntar todos os trimestres
-  dados_ano_completo <- NULL
-  
-  # Condicional para limitar os trimestres de 2024 a 3
-  if (ano == 2024) {
-    trimestres <- 1:3  # Apenas os três primeiros trimestres de 2024
-  } else {
-    trimestres <- 1:4  # Para os outros anos, inclui todos os 4 trimestres
-  }
-  
-  for (trimestre in trimestres) {  # Loop para os trimestres de 1 a 4 (ou até 3 em 2024)
-    # Obtém os dados e armazena na lista
-    dados_trimestre <- get_pnadc(
-      year = ano,         # Determina o ano
-      quarter = trimestre, # Determina o trimestre (1 a 4)
+for(ano in 2012:2013) {
+  trimestres <- ifelse(ano==2024, 1:3, 1:4)
+  for (trimestre in trimestres) {
+    # Obtém os dados e armazena cada trimestre na lista
+    PNADC_trimestres[[paste0(ano, "Trimestre", trimestre)]] <- get_pnadc(
+      year = ano,
+      quarter = trimestre,
       design = FALSE,
       labels = FALSE,
-      vars = varselec     # Variáveis selecionadas
+      deflator = TRUE,
+      vars = varselec
     )
-    
-    # Armazenar os dados individuais do trimestre
-    pnadc_dados[[paste0(as.character(ano), "_Trimestre", trimestre)]] <- dados_trimestre
-    
-    # Juntar os dados de todos os trimestres para o ano
-    dados_ano_completo <- bind_rows(dados_ano_completo, dados_trimestre)
   }
-  
-  # Armazenar o ano completo na lista
-  pnadc_dados[[paste0(as.character(ano), "_AnoCompleto")]] <- dados_ano_completo
-  
-  # Salvar o ano completo como um objeto no ambiente global
-  assign(paste0("PNAD", ano), dados_ano_completo)
 }
 
+#salvando dados anualizados(os quatros trimestros somados)
+PNADC2012 <- rbind(PNADC_trimestres)
 
+
+
+
+
+
+
+
+# Usando um loop para combinar os data frames e salvar dinamicamente
+# Exemplo: combinando os trimestres de 2012
+for(ano in 2012:2013) {
+  trimestres <- ifelse(ano==2024, 1:3, 1:4)
+dados_combinados <- do.call(rbind, PNADC[paste0(ano, "Trimestre_", trimestres)])
+
+# Nome dinâmico para o objeto
+nome_objeto <- paste0("PNADC", ano)
+
+# Salvando o resultado com assign
+assign(nome_objeto, dados_combinados)
+}
 
 # FILTRANDO E MANIPULANDO DADOS ----
-{
-# Loop para processar os dados de 2012 a 2024
-for (ano in 2012:2024) {
-  
-  # Acessa os dados do ano específico (por exemplo, PNAD2012, PNAD2013, etc.)
-  dados <- get(paste0("PNAD", ano))  # Usando get() para acessar a variável correspondente
-  
-  # FILTRANDO E MANIPULANDO DADOS ----
-  dados <- dados |> 
-    select(
-      Ano, Trimestre, UF, UPA, V1008, V1014, V2005, VD4002, V2010, V20082, 
-      V2007, V2009, VD4016, VD3005, V4040, V40401, V40402, V40403
-    ) |> 
-    # Criando dummies ----
-  mutate(
-    MédiaAnosEscolar = mean(as.numeric(VD3005), na.rm = TRUE)
-  ) |> 
-    mutate(
-      Homem = ifelse(V2007 == 1, 1, 0),
-      Mulher = ifelse(V2007 == 1, 0, 1),
-      MédiaHomem = ifelse(V2007 == 1, mean(Homem)*100, 0),
-      MédiaMulher = ifelse(V2007 == 1, 0, mean(Mulher)*100)
-    ) |> 
-    mutate(
-      Branco = ifelse(V2010 == 1, 1, 0),
-      ñBranco = ifelse(V2010 == 1, 0, 1),
-      MédiaBranco = ifelse(V2010 == 1, mean(Branco)*100, 0),
-      Média_ñBranco = ifelse(V2010 == 1, 0, mean(ñBranco)*100)
-    ) |> 
-    mutate(
-      Domicílio = paste0(UPA, V1008, V1014)
-    ) |>
-    group_by(Domicílio) |>
-    mutate(
-      ChefeFamilia = ifelse(V2005 == "01", 1, 0),
-      Conjuge = ifelse(V2005 == "02", 1, 0),
-      Casados = ifelse(ChefeFamilia == 1 | (Conjuge == 1 & any(ChefeFamilia == 1)), 1, 0),
-      ñcasados = ifelse(Casados == 0 & V2009 > 18, 1, 0),
-      Filhos_menores = ifelse(V2005 >= "04" & V2005 <= "06" & V2009 < 18, 1, 0),
-      CasadosComFilhoMenor = ifelse(Casados == 1 & any(Filhos_menores == 1), 1, 0),
-      CasadosSemFilhoMenor = ifelse(Casados == 1 & !any(Filhos_menores == 1), 1, 0)
-    ) |>
-    ungroup()
 
-  
-  # Criando ID com ano de nascimento e sexo
-  dados$ID <- apply(dados[, 10:11], 1, paste, collapse = "")
-  
-  # Média por ID
-  dados <- dados |> 
-    group_by(ID) |> 
-    mutate(
-      RendaMédia = mean(VD4016, na.rm = TRUE),
-      TempoMédioEmprego_Acima2anos = mean(V40403, na.rm = TRUE)
-    ) |> 
-    ungroup()
-  
-  # Filtrando indivíduos sem dados de ocupação e renda (idade < 14)
-  SEMocupacao_SEMrenda <- dados |> 
-    filter(V2009 < 14)
-  
-  # Garantindo que as colunas específicas sejam preenchidas com NA em SEMocupacao_SEMrenda
-  SEMocupacao_SEMrenda <- SEMocupacao_SEMrenda |> 
-    mutate(
-      VD4002 = NA,
-      VD4016 = NA,
-      V4040 = NA,
-      V40401 = NA,
-      V40402 = NA,
-      V40403 = NA,
-      RendaMédia = NA,
-      TempoMédioEmprego_Acima2anos = NA
-    )
-  
-  # Filtrando dados pela condição de ocupação, nascimento e renda
-  dados <- dados |> 
-    filter(
-      VD4002 == 1 &
-        V20082 >= 1964 &
-        VD4020 <= 100000
-    )
-  
-  # Juntando os dados de indivíduos < 14 com a base de dados do ano
-  dados <- bind_rows(dados, SEMocupacao_SEMrenda)
-  
-  
-  # Atribuindo os dados manipulados de volta à variável do ano específico
-  assign(paste0("dados", ano), dados)
-  
-}
+for (ano in 2016:2023){
+
+      dados_PNAD <- get(paste0("PNAD", ano))
+      dados_PNAD <- dados_PNAD |> 
+        select(
+          Ano, Trimestre, UF, UPA, V1008, V1014, V2005, VD4002, V2010, V20082, 
+          V2007, V2009, VD4016, VD4019, VD3005, V4040, V40401, V40402, V40403, Habitual
+        ) |> 
+        # Criando dummies ----
+        mutate(
+          MédiaAnosEscolar = mean(as.numeric(VD3005), na.rm = TRUE)
+        ) |> 
+        mutate(
+          Homem = ifelse(V2007 == 1, 1, 0),
+          Mulher = ifelse(V2007 == 1, 0, 1),
+          MédiaHomem = ifelse(V2007 == 1, mean(Homem)*100, 0),
+          MédiaMulher = ifelse(V2007 == 1, 0, mean(Mulher)*100)
+        ) |> 
+        mutate(
+          Branco = ifelse(V2010 == 1, 1, 0),
+          ñBranco = ifelse(V2010 == 1, 0, 1),
+          MédiaBranco = ifelse(V2010 == 1, mean(Branco)*100, 0),
+          Média_ñBranco = ifelse(V2010 == 1, 0, mean(ñBranco)*100)
+        ) |> 
+        mutate(
+          Domicílio = paste0(UPA, V1008, V1014)
+        ) |>
+        mutate(
+          VD4019real = VD4019*Habitual
+        ) |> 
+        group_by(Domicílio) |>
+        mutate(
+          ChefeFamilia = ifelse(V2005 == "01", 1, 0),
+          Conjuge = ifelse(V2005 == "02", 1, 0),
+          Casados = ifelse(ChefeFamilia == 1 | (Conjuge == 1 & any(ChefeFamilia == 1)), 1, 0),
+          ñcasados = ifelse(Casados == 0 & V2009 > 18, 1, 0),
+          Filhos_menores = ifelse(V2005 >= "04" & V2005 <= "06" & V2009 < 18, 1, 0),
+          CasadosComFilhoMenor = ifelse(Casados == 1 & any(Filhos_menores == 1), 1, 0),
+          CasadosSemFilhoMenor = ifelse(Casados == 1 & !any(Filhos_menores == 1), 1, 0)
+        ) |>
+        ungroup()
+    
+      
+      # Criando ID com ano de nascimento e sexo
+      dados_PNAD$ID <- apply(dados[, 10:11], 1, paste, collapse = "")
+      
+      # Média por ID
+      dados_PNAD <- dados_PNAD |> 
+        group_by(ID) |> 
+        mutate(
+          RendaMédia = mean(VD4019, na.rm = TRUE),
+          RendaMédiaReal = mean(VD4019real, na.rm = TRUE),
+          TempoMédioEmprego_Acima2anos = mean(V40403, na.rm = TRUE)
+        ) |> 
+        ungroup()
+      
+      # Filtrando indivíduos sem dados de ocupação e renda (idade < 14)
+      SEMocupacao_SEMrenda <- dados_PNAD |> 
+        filter(V2009 < 14)
+      
+      # Garantindo que as colunas específicas sejam preenchidas com NA em SEMocupacao_SEMrenda
+      SEMocupacao_SEMrenda <- SEMocupacao_SEMrenda |> 
+        mutate(
+          VD4002 = NA,
+          VD4016 = NA,
+          V4040 = NA,
+          V40401 = NA,
+          V40402 = NA,
+          V40403 = NA,
+          RendaMédia = NA,
+          TempoMédioEmprego_Acima2anos = NA
+        )
+      
+      # Filtrando dados pela condição de ocupação, nascimento e renda
+      dados_PNAD <- dados_PNAD |> 
+        filter(
+          VD4002 == 1 &
+            V20082 >= 1964 &
+            VD4020 <= 100000
+        )
+      
+      # Juntando os dados de indivíduos < 14 com a base de dados do ano
+      dados_PNAD <- bind_rows(dados, SEMocupacao_SEMrenda)
+      
+
+
+      assign(paste0("dados", ano), dados)
 
 }
+
+
 
 
 
