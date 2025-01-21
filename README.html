@@ -353,12 +353,13 @@ display: none;
 
 
 <div id="passo-a-passo-microdados-pnadc" class="section level1">
-<h1>PASSO A PASSO Microdados-PNADC</h1>
+<h1><strong>PASSO A PASSO Microdados-PNADC</strong></h1>
 <p>Análise e manipulação dos microdados da Pesquisa Nacional por Amostra
 de Domicílios Contínua(PNADC). Passo a passo de como fazer o download
 dos microdados, por trimestre, da PNAD contínua de 2012 a 2024.3</p>
-<div id="dicionário-das-variáveis-usadas" class="section level3">
-<h3>Dicionário das variáveis usadas:</h3>
+<p><br></p>
+<div id="dicionário-das-variáveis-usadas" class="section level4">
+<h4><strong>Dicionário das variáveis usadas:</strong></h4>
 <p>UF &gt;&gt; estados<br />
 V2005 &gt;&gt; condição no domicílio<br />
 VD4002 &gt;&gt; condição de ocupação (1 = ocupado 2 = desocupado)<br />
@@ -370,21 +371,43 @@ VD4016 &gt;&gt; rendimento mensal habitual(em reais)<br />
 VD3005 &gt;&gt; anos de estudo<br />
 V4040 &gt;&gt; tempo de emprego(categorias: 1 mês, menos de 1 ano, menos
 de 2 anos e 2 anos ou mais)<br />
-V40403 &gt;&gt; tempo de emprego(2 a 98 = 2 anos ou mais)<br />
-</p>
+V40403 &gt;&gt; tempo de emprego(2 a 98 = 2 anos ou mais)</p>
+<p><br></p>
 </div>
-<div id="baixando-base-de-dados-de-2012-a-2024.3" class="section level3">
-<h3>Baixando base de dados de 2012 a 2024.3</h3>
-<div id="cria-uma-lista-para-armazenar-os-dados-de-todos-os-trimestres-de-2012-a-2024.3-e-realiza-um-loop-for-para-não-precisar-ficar-repetindo-o-código-para-todos-os-trimestres." class="section level5">
-<h5>Cria uma lista para armazenar os dados de todos os trimestres de
-2012 a 2024.3 e realiza um loop FOR para não precisar ficar repetindo o
-código para todos os trimestres.</h5>
+<div id="limpando-environment-instalando-e-carregando-pacotes" class="section level4">
+<h4><strong>Limpando environment, instalando e carregando
+pacotes</strong></h4>
+<pre class="r"><code>#Limpando o environment
+rm(list = ls())
+
+instalando e carregando pacotes
+install.packages(&quot;PNADcIBGE&quot;)
+install.packages(&quot;dplyr&quot;)
+install.packages(&quot;survey&quot;)
+library(PNADcIBGE)
+library(dplyr)
+library(survey)</code></pre>
+<p><br></p>
+</div>
+<div id="selecionando-variáveis-baseado-no-dicionário-da-pnad" class="section level4">
+<h4><strong>Selecionando variáveis baseado no dicionário da
+PNAD</strong></h4>
+<pre class="r"><code>#selecionado as variáveis
+varselec &lt;-  c(&quot;UF&quot;,&quot;V2005&quot;,&quot;VD4002&quot;,&quot;V2010&quot;,&quot;V2009&quot;, &quot;V2007&quot;,&quot;VD4016&quot;, &quot;VD4019&quot;, &quot;VD3005&quot;,&quot;V4040&quot;,&quot;V40401&quot;,&quot;V40402&quot;, &quot;V40403&quot;, &quot;V20082&quot;)</code></pre>
+<p><br></p>
+</div>
+<div id="baixando-base-de-dados-de-2012-a-2024.3" class="section level4">
+<h4><strong>Baixando base de dados de 2012 a 2024.3</strong></h4>
+<p>O código abaixo cria uma lista para armazenar os dados de todos os
+trimestres de 2012 a 2024.3 baixados com a função <code>get_pnadc</code>
+e realiza um loop <code>for</code> para não precisar ficar repetindo o
+código para todos os trimestres.</p>
 <pre class="r"><code>#criando lista vazia
 PNADC_trimestres &lt;- list()
 
-#loop FOR
+#loop for
 for(ano in 2012:2013) {
-  trimestres &lt;- ifelse(ano==2024, 1:3, 1:4)
+  trimestres &lt;- if(ano==2024) 1:3 else 1:4
   for (trimestre in trimestres) {
     # Obtém os dados e armazena cada trimestre na lista
     PNADC_trimestres[[paste0(ano, &quot;Trimestre&quot;, trimestre)]] &lt;- get_pnadc(
@@ -397,43 +420,143 @@ for(ano in 2012:2013) {
     )
   }
 }</code></pre>
+<p><br></p>
 </div>
-<div id="limpando-environment-instalando-e-carregando-pacotes" class="section level4">
-<h4>Limpando environment, instalando e carregando pacotes</h4>
-<pre class="r"><code>#Limpando o environment
-rm(list = ls())
+<div id="salvando-dados-por-ano" class="section level4">
+<h4><strong>Salvando dados por ano</strong></h4>
+<pre class="r"><code># Usando um loop para combinar os data frames e salvar 4 trimestres formando um ano
+for(ano in 2012:2013) {
+  trimestres &lt;- if(ano==2024) 1:3 else 1:4
+  dados_combinados &lt;- do.call(rbind, PNADC_trimestres[paste0(ano, &quot;Trimestre&quot;, trimestres)])
 
-#instalando e carregando pacotes
-install.packages(&quot;PNADcIBGE&quot;)
-install.packages(&quot;dplyr&quot;)
-library(PNADcIBGE)
-library(dplyr)</code></pre>
+  # Nome dinâmico para o objeto
+  dados_anuais &lt;- paste0(&quot;PNADC&quot;, ano)
+
+  assign(dados_anuais, dados_combinados)
+}
+</code></pre>
+<p><br></p>
 </div>
-<div id="selecionando-variáveis-baseado-no-dicionário-da-pnad" class="section level4">
-<h4>Selecionando variáveis baseado no dicionário da PNAD</h4>
-<pre class="r"><code>#selecionado as variáveis
-varselec &lt;-  c(&quot;UF&quot;,&quot;V2005&quot;,&quot;VD4002&quot;,&quot;V2010&quot;,&quot;V2009&quot;, &quot;V2007&quot;,&quot;VD4016&quot;, &quot;VD4019&quot;, &quot;VD3005&quot;,&quot;V4040&quot;,&quot;V40401&quot;,&quot;V40402&quot;, &quot;V40403&quot;, &quot;V20082&quot;)</code></pre>
+<div id="selecionando-apenas-as-colunas-com-as-variáveis-escolhidas-com-um-loop-for-para-cada-ano" class="section level4">
+<h4><strong>Selecionando apenas as colunas com as variáveis escolhidas
+com um loop <code>for</code> para cada ano</strong></h4>
+<p>Os blocos abaixo de filtragem e criação de dummies estão interligados
+por pipes( |&gt; )</p>
+<pre class="r"><code>dados_PNAD &lt;- get(paste0(&quot;PNADC&quot;, ano))
+  dados_PNAD &lt;- dados_PNAD |&gt; 
+    select(
+      Ano, Trimestre, UF, UPA, V1008, V1014, V2005, VD4002, V2010, V20082, 
+      V2007, V2009, VD4016, VD4019, VD3005, V4040, V40401, V40402, V40403, Habitual
+    ) |&gt; </code></pre>
+<p><br></p>
 </div>
-<div id="função-get_pnadc-para-baixar-os-microdados" class="section level4">
-<h4>Função get_pnadc para baixar os microdados</h4>
-<pre class="r"><code></code></pre>
+<div id="criação-da-média-de-anos-escolares-dos-sexos-e-da-raça-além-disso-criação-das-dummies-de-sexo-e-raça" class="section level4">
+<h4><strong>Criação da média de anos escolares, dos sexos e da raça,
+além disso, criação das dummies de sexo e raça</strong></h4>
+<pre class="r"><code># Criando dummies
+    mutate(
+      MédiaAnosEscolar = mean(as.numeric(VD3005), na.rm = TRUE)
+    ) |&gt; 
+    mutate(
+      Homem = ifelse(V2007 == 1, 1, 0),
+      Mulher = ifelse(V2007 == 1, 0, 1),
+      MédiaHomem = ifelse(V2007 == 1, mean(Homem)*100, 0),
+      MédiaMulher = ifelse(V2007 == 1, 0, mean(Mulher)*100)
+    ) |&gt; 
+    mutate(
+      Branco = ifelse(V2010 == 1, 1, 0),
+      ñBranco = ifelse(V2010 == 1, 0, 1),
+      MédiaBranco = ifelse(V2010 == 1, mean(Branco)*100, 0),
+      Média_ñBranco = ifelse(V2010 == 1, 0, mean(ñBranco)*100)
+    ) |&gt; 
+    mutate(
+      Domicílio = paste0(UPA, V1008, V1014)
+    ) |&gt;</code></pre>
+<p><br></p>
 </div>
-<div id="filtragem-dos-dados-e-criação-de-dummies" class="section level4">
-<h4>Filtragem dos dados e criação de dummies</h4>
-<pre class="r"><code></code></pre>
+<div id="atualização-monetária-com-a-variável-habitual-que-vem-na-base-de-dados-quando-get_pnadcdeflator-true" class="section level4">
+<h4><strong>Atualização monetária com a variável “Habitual” que vem na
+base de dados quando
+<code>get_pnadc(deflator = TRUE)</code></strong></h4>
+<pre class="r"><code>   mutate(
+      VD4019real = VD4019*Habitual
+    ) |&gt; </code></pre>
+<p><br></p>
 </div>
-<div id="criando-id" class="section level4">
-<h4>criando ID</h4>
-<pre class="r"><code></code></pre>
+<div id="criando-dummies-e-média-com-base-na-variável-condição-de-domicílio" class="section level4">
+<h4><strong>Criando dummies e média com base na variável “condição de
+domicílio”</strong></h4>
+<pre class="r"><code>    group_by(Domicílio) |&gt;
+    mutate(
+      ChefeFamilia = ifelse(V2005 == &quot;01&quot;, 1, 0),
+      Conjuge = ifelse(V2005 == &quot;02&quot;, 1, 0),
+      Casados = ifelse(ChefeFamilia == 1 | (Conjuge == 1 &amp; any(ChefeFamilia == 1)), 1, 0),
+      ñcasados = ifelse(Casados == 0 &amp; V2009 &gt; 18, 1, 0),
+      Filhos_menores = ifelse(V2005 &gt;= &quot;04&quot; &amp; V2005 &lt;= &quot;06&quot; &amp; V2009 &lt; 18, 1, 0),
+      CasadosComFilhoMenor = ifelse(Casados == 1 &amp; any(Filhos_menores == 1), 1, 0),
+      CasadosSemFilhoMenor = ifelse(Casados == 1 &amp; !any(Filhos_menores == 1), 1, 0)
+    ) |&gt;
+    ungroup()</code></pre>
+<p><br></p>
 </div>
-<div id="resolvendo-o-problema-de-dados-de-renda-faltante-para-indivíduos-menores-de-14-anos" class="section level4">
-<h4>resolvendo o problema de dados de renda faltante para indivíduos
-menores de 14 anos</h4>
-<pre class="r"><code></code></pre>
+<div id="criação-das-id-e-renda-média-renda-média-e-tempo-médio-de-emprego-por-id" class="section level4">
+<h4><strong>Criação das ID e renda média, renda média e tempo médio de
+emprego por ID</strong></h4>
+<pre class="r"><code># Criando ID com ano de nascimento e sexo que são as colunas 10 e 11, respectivamente
+  dados_PNAD$ID &lt;- apply(dados_PNAD[, 10:11], 1, paste, collapse = &quot;&quot;)
+  
+  # Média por ID
+  dados_PNAD &lt;- dados_PNAD |&gt; 
+    group_by(ID) |&gt; 
+    mutate(
+      RendaMédia = mean(VD4019, na.rm = TRUE),
+      RendaMédiaReal = mean(VD4019real, na.rm = TRUE),
+      TempoMédioEmprego_Acima2anos = mean(V40403, na.rm = TRUE)
+    ) |&gt; 
+    ungroup()</code></pre>
+<p><br></p>
 </div>
-<div id="section" class="section level4">
-<h4></h4>
+<div id="resolvendo-o-problema-da-falta-de-dados-de-remuneração-e-ocupação-de-pessoas-menores-de-14-anos" class="section level4">
+<h4><strong>Resolvendo o problema da falta de dados de remuneração e
+ocupação de pessoas menores de 14 anos</strong></h4>
+<p>Foi preciso primeiramente separar as pessoas menores de 14 do banco
+de dados porque ao fazer a filtragem por condição de ocupação e
+remuneração esses indivíduos seriam excluídos, visto que essas variáveis
+só captam indivíduos com 14 anos ou mais. Então, após esta separação foi
+feito o filtro somente para pessoas ocupadas, com 60 anos ou menos e que
+recebem até R$100 mil de remuneração. E por fim, a junção novamente com
+os dados de indivíduos menor de 14 anos.</p>
+<pre class="r"><code># Filtrando indivíduos sem dados de ocupação e renda (idade &lt; 14)
+  SEMocupacao_SEMrenda &lt;- dados_PNAD |&gt; 
+    filter(V2009 &lt; 14)
+  
+  # Garantindo que as colunas específicas sejam preenchidas com NA em SEMocupacao_SEMrenda
+  SEMocupacao_SEMrenda &lt;- SEMocupacao_SEMrenda |&gt; 
+    mutate(
+      VD4002 = NA,
+      VD4016 = NA,
+      V4040 = NA,
+      V40401 = NA,
+      V40402 = NA,
+      V40403 = NA,
+      RendaMédia = NA,
+      TempoMédioEmprego_Acima2anos = NA
+    )
+  
+  # Filtrando dados pela condição de ocupação, nascimento e renda
+  dados_PNAD &lt;- dados_PNAD |&gt; 
+    filter(
+      VD4002 == 1 &amp;
+        V20082 &gt;= 1964 &amp;
+        VD4019 &lt;= 100000
+    )
+  
+  # Juntando os dados de indivíduos &lt; 14 com a base de dados do ano
+  dados_PNAD &lt;- bind_rows(dados, SEMocupacao_SEMrenda)</code></pre>
+<p><br></p>
 </div>
+<div id="estatística-descritiva" class="section level2">
+<h2>Estatística Descritiva</h2>
 </div>
 </div>
 
